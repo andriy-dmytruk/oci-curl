@@ -1,7 +1,7 @@
 -- To run you need lua and http
 -- On MacOS:
 -- brew install lua luarocks
--- luarocks install http
+-- luarocks install http base64
 -- -- I also got this error for some reason: Failed to locate 'm4'
 -- -- Solved it with: sudo ln -s /Library/Developer/CommandLineTools/usr/bin/gm4 /Library/Developer/CommandLineTools/usr/bin/m4
 -- Implementation based on: https://www.ateam-oracle.com/post/oracle-cloud-infrastructure-oci-rest-call-walkthrough-with-curl
@@ -83,35 +83,26 @@ function print_debug(...)
 end
 
 function create_signature(to_sign, private_key_path)
-    local cmd = string.format(
-            "printf '%%b' '%s' | openssl dgst -sha256 -sign %s | openssl enc -e -base64 | tr -d '\\n'",
-            to_sign, private_key_path
-    )
+    local file = io.open(private_key_path, "rb")
+    local key_string = file:read("*all")
+    file:close()
 
-    local pipe = io.popen(cmd, 'r')
-    local output = pipe:read('*a')
-    pipe:close()
-    return output
+    local openssl_pkey = require "openssl.pkey"
+    local openssl_digest = require "openssl.digest"
+    local base64 = require "base64"
+
+    local key = openssl_pkey:new("")
+    key:setPrivateKey(key_string)
+    local data = openssl_digest.new("sha256")
+    data:update(to_sign)
+    return base64.encode(key:sign(data))
 end
 
 function create_sha(to_hash)
-    local tmpfile_path = os.tmpname()
+    local openssl_digest = require "openssl.digest"
+    local base64 = require "base64"
 
-    print("Body to hash", to_hash)
-    local tmpfile = io.open(tmpfile_path, 'w+b')
-    tmpfile:write(to_hash)
-    tmpfile:close()
-
-    local cmd = string.format(
-            "openssl dgst -binary -sha256 < '%s' | openssl enc -e -base64",
-            tmpfile_path
-    )
-
-    local pipe = io.popen(cmd, 'r')
-    local output = pipe:read('*a'):gsub("\n", "")
-    os.remove(tmpfile_path)
-    pipe:close()
-    return output
+    return base64.encode(openssl_digest.new("sha256"):final(to_hash))
 end
 
 function sign_request(request, oci, debug)
@@ -161,6 +152,19 @@ end
 function send_request(request_data, debug)
     local http_request = require "http.request"
     local http_headers = require "http.headers"
+
+    if debug then
+        print_debug("Request: ")
+        print_debug("=========")
+        print_debug(string.format("%s %s", request_data.method, request_data.url))
+        for k,v in pairs(request_data.headers) do
+            print_debug(string.format("%s: %s", k, v))
+        end
+        if (request_data.body) then
+            print_debug(request_data.body)
+        end
+        print_debug("=========")
+    end
 
     local headers = http_headers.new()
     headers:append(":method", request_data.method)
@@ -234,20 +238,6 @@ function main(args)
     end
 
     sign_request(request, oci, debug)
-
-    if debug then
-        print_debug("Request: ")
-        print_debug("=========")
-        print_debug(string.format("%s %s", request.method, request.url))
-        for k,v in pairs(request.headers) do
-            print_debug(string.format("%s: %s", k, v))
-        end
-        if (request.body) then
-            print_debug(request.body)
-        end
-        print_debug("=========")
-    end
-
     local response_body = send_request(request, debug)
     print(response_body)
 end
