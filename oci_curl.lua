@@ -204,13 +204,16 @@ function create_instance_principal_session(debug)
     end
 
     -- Parse the response
-    local token = response.match('"token"%s*:%s*"(%S+)"')
+    local token = response:match('"token"%s*:%s*"(%S+)"')
     if not token then
         error("Got invalid session authorization response. Could not retrieve token")
     end
+    if debug then
+        print_debug("Retrieved token: '" .. token .. "'")
+    end
 
     return {
-        security_token = token,
+        token = token,
         private_key = session_key
     }
 end
@@ -354,18 +357,8 @@ function send_request(request_data, debug)
     if request_data.body then
         request:set_body(request_data.body)
     end
-    if debug then
-        print_debug("Sending request")
-    end
     local headers, stream = assert(request:go())
-    if debug then
-        print_debug("Getting response status")
-    end
     local status = headers:get(":status")
-
-    if debug then
-        print_debug("Getting response body")
-    end
     local body = stream:get_body_as_string()
 
     if debug then
