@@ -110,11 +110,17 @@ sudo ln -s /etc/pki/tls/cert.pem /usr/local/ssl/cert.pem
 
 ### Test
 
-Run
+On local machine run:
 ```shell
 lua test.lua <compartment-id>
 ```
-or
-```shell
-lua test.lua <compartment-id> -a instance_principal
-```
+
+On an OCI instance
+* Create a policy to allow the instance to create logging groups:
+  ```shell
+  allow any-user to manage log-groups in compartment id <compartment-id> where ALL { request.principal.type='instance', request.principal.compartment.id='<compartment-id>' }
+  ```
+* Run:
+  ```shell
+  lua test.lua <compartment-id> -a instance_principal
+  ```
