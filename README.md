@@ -112,9 +112,9 @@ sudo ln -s /etc/pki/tls/cert.pem /usr/local/ssl/cert.pem
 
 Run
 ```shell
-lua test.lua
+lua test.lua <compartment-id>
 ```
 or
 ```shell
-lua test.lua -a instance_principal
+lua test.lua <compartment-id> -a instance_principal
 ```

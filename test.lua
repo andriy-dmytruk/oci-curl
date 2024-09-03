@@ -1,9 +1,10 @@
-local COMPARTMENT_ID = "ocid1.compartment.oc1..aaaaaaaan7umhnbk2vbjqdmfdkyix4bwleh5wabqvo2amdwp2lftkojecumq"
-
-extra_params = table.concat({ ... }, " ")
+local args = { ... }
+local COMPARTMENT_ID = args[1]
+extra_params = table.concat({ table.unpack(args, 2) }, " ")
 
 function execute_command(cmd, verify, getter)
-    local pipe = io.popen(cmd .. " " .. extra_params, 'r')
+    cmd = cmd .. " " .. extra_params
+    local pipe = io.popen(cmd, 'r')
     local output = pipe:read('*a')
     if output:sub(#output, #output) == '\n' then
         output = output:sub(1, #output - 1)
