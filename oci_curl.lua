@@ -203,10 +203,15 @@ function create_instance_principal_session(debug)
         print_debug("Got session response: '" .. response .. "'")
     end
 
+    -- Parse the response
+    local token = response.match('"token"%s*:%s*"(%S+)"')
+    if not token then
+        error("Got invalid session authorization response. Could not retrieve token")
+    end
+
     return {
-        tenancy_id = "",
-        fingerprint = "",
-        private_key = ""
+        security_token = token,
+        private_key = session_key
     }
 end
 
@@ -257,7 +262,9 @@ function sign_request(request, oci, debug)
         sign_request_with_key_id(request, key_id, private_key, debug)
     elseif oci.auth_mode == "instance_principal" then
         local session = create_instance_principal_session(debug)
-        local key_id = string.format("{}/fed-x509/{}", session.tenancy_id, session.fingerprint)
+        -- https://github.com/oracle/oci-python-sdk/blob/master/src/oci/auth/signers/security_token_signer.py#L12
+        local key_id = string.format("ST$%s", session.token)
+        sign_request_with_key_id(request, key_id, session.private_key, debug)
     else
         error("Only api_key and instance_principal auth modes are supported")
     end
@@ -351,6 +358,9 @@ function send_request(request_data, debug)
         print_debug("Sending request")
     end
     local headers, stream = assert(request:go())
+    if debug then
+        print_debug("Getting response status")
+    end
     local status = headers:get(":status")
 
     if debug then
