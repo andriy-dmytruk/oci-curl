@@ -213,6 +213,7 @@ function create_instance_principal_session(debug)
 end
 
 function get_instance_principal_region(debug)
+    -- TODO support different realms. The realm is based on retrieved region
     -- curl http://169.254.169.254/opc/v2/instance/region -H'Authorization: Bearer Oracle' -H'Accept: text/plain'
     local region_code = send_instance_principal_metadata_request("/instance/region", {}, debug)
     local REGIONS_SHORT_NAMES = require('regions')
@@ -224,6 +225,7 @@ function get_instance_principal_region(debug)
 end
 
 function send_instance_principal_metadata_request(path, headers, debug)
+    -- TODO support /v1 URL. Need to check if either is available and send request there
     local metadata_url = "http://169.254.169.254/opc/v2" .. path
     local request = require("http.request").new_from_uri(metadata_url)
     request.headers:append("Authorization", "Bearer Oracle")
@@ -403,6 +405,7 @@ function main(args)
         print_debug("Starting in debug mode")
     end
 
+    -- TODO support changing region based on the one configured by auth
     sign_request(request, oci, debug)
     local response_body = send_request(request, debug)
     print(response_body)

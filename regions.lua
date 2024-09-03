@@ -1,4 +1,4 @@
--- Copied from https=//github.com/oracle/oci-python-sdk/blob/master/src/oci/regions_definitions.py
+-- Copied from https://github.com/oracle/oci-python-sdk/blob/master/src/oci/regions_definitions.py
 
 REGIONS_SHORT_NAMES = {
     yny = 'ap-chuncheon-1',
