@@ -1,9 +1,3 @@
--- To run you need lua and http
--- On MacOS:
--- brew install lua luarocks
--- luarocks install http base64
--- -- I also got this error for some reason: Failed to locate 'm4'
--- -- Solved it with: sudo ln -s /Library/Developer/CommandLineTools/usr/bin/gm4 /Library/Developer/CommandLineTools/usr/bin/m4
 -- Implementation based on: https://www.ateam-oracle.com/post/oracle-cloud-infrastructure-oci-rest-call-walkthrough-with-curl
 
 function parse_arguments(args)
