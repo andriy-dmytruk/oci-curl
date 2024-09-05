@@ -2,7 +2,7 @@ require("oci_curl_common")
 
 function parse_arguments(args)
     local request = {method = "GET", url = nil, body = nil, headers = {}}
-    local oci = { profile = "DEFAULT", config_file = "~/.oci/config", auth_mode = "api_key" }
+    local session
     local debug = false
 
     local i = 1
@@ -30,15 +30,8 @@ function parse_arguments(args)
             request.method = value
         elseif key == 'd' then
             request.body = value
-        elseif key == 'p' then
-            oci.profile = value
-        elseif key == 'c' then
-            oci.config_file = value
-        elseif key == 'a' then
-            if value ~= "api_key" and value ~= "instance_principal" then
-                error("-a flag must be one of api_key and instance_principal")
-            end
-            oci.auth_mode = value
+        elseif key == 's' then
+            session = value
         elseif key == 'v' then
             debug = true
         else
@@ -47,40 +40,58 @@ function parse_arguments(args)
         i = i + 1
     end
 
-    return request, oci, debug
+    return request, session, debug
+end
+
+function parse_session(session_string)
+    local token = session_string:match('"token"%s*:%s*"(%S+)"')
+    local private_key_string = session_string:match('"private_key"%s*:%s*"([^"]+)"')
+
+    local openssl_pkey = require "openssl.pkey"
+    local key = openssl_pkey.new()
+    key:setPrivateKey(private_key_string)
+    return { token = token, private_key = key }
 end
 
 function main(args)
     if #args == 0 then
-        print("oci_curl.lua")
+        print("oci_curl_sign_session.lua")
         print("Usage:")
-        print("    lua oci_curl.lua [url] [optional arguments]")
+        print("    lua oci_curl_sign_session.lua [url] [optional arguments]")
         print("Arguments:")
         print("       url             The request URL")
         print("    -H header: value   A header")
         print("    -X method          The HTTP method")
         print("    -d body            The body data")
-        print("    -c OCI config      The path to OCI config")
-        print("    -p OCI profile     The OCI profile to use")
+        print"     -s session         The session in same format as returned from oci_curl_init_session.lua"
         print("    -v                 Run in verbose mode")
-        print("Examples:")
-        print("    lua oci_curl.lua https://objectstorage.us-phoenix-1.oraclecloud.com/n/")
-        print("    lua oci_curl.lua -X POST https://logging.us-phoenix-1.oci.oraclecloud.com/20200531/logGroups/" ..
-                " -d '{\"compartmentId\":\"<id>\",\"displayName\":\"test-log-group\"}'")
-        print("    lua oci_curl.lua -X DELETE 'https://logging.us-phoenix-1.oci.oraclecloud.com/20200531/logGroups/<id>' -v")
-        print("    lua oci_curl.lua 'https://logging.us-phoenix-1.oci.oraclecloud.com/20200531/logGroups?compartmentId=<id>&displayName=test-log-group'")
         return
     end
 
-    local request, oci, debug = parse_arguments(args)
+    local request, session_string, debug = parse_arguments(args)
     if debug then
         print_debug("Starting in debug mode")
     end
+    if not session_string then
+        error("Argument -s session is required")
+    end
+    local session = parse_session(session_string)
 
-    -- TODO support changing region based on the one configured by auth
-    sign_request(request, oci, debug)
-    local response_body = send_request(request, debug)
-    print(response_body)
+    local key_id = string.format("ST$%s", session.token)
+    sign_request_with_key_id(request, key_id, session.private_key, debug)
+
+    local result = '{'
+    for k,v in pairs(request.headers) do
+        if k == "Authorization" or k == "x-content-sha256"
+                or k == "content-length" or k == "content-type" or k == "date" then
+            if #result > 1 then
+                result = result .. ','
+            end
+            result = result .. '"' .. k:gsub('"', '\\"') .. '":"' .. v:gsub('"', '\\"') .. '"'
+        end
+    end
+    result = result .. '}'
+    print(result)
 end
 
 main({...})

@@ -19,6 +19,18 @@ lua oci_curl.lua [url] [optional arguments]
 | `-a [auth_mode]` | Authentication mode. One of `api_key` and `instance_principal` | `api_key` |
 | `-v` | Run in verbose mode | Not set |
 
+### Separated scripts
+
+Use these 2 scripts to initialize a session first and then retrieve signature and other required headers based on it:
+```shell
+session=$(lua oci_init_session.lua)
+lua oci_sign_session.lua -s "$session" https://objectstorage.us-phoenix-1.oraclecloud.com/n/
+```
+Example output:
+```shell
+{"Authorization":"Signature version=\"1\",keyId=\"ST$aaaaaaaaaa\",\"private_key\":\",algorithm=\"rsa-sha256\",headers=\"(request-target) date host\",signature=\"aaaaaaaaaa\"","date":"Thu, 05 Sep 2024 23:01:38 GMT"}
+```
+
 ### Examples
 
 * List namespace
